@@ -1,0 +1,23 @@
+server:
+  port: 8090
+
+spring:
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: never
+api:
+  recharges:
+    base-url: "http://localhost:8081"
+    path: "/payments/status"
+    connect-timeout-ms: 2000
+    read-timeout-ms: 5000
+
+scheduler:
+  cron: "0 */2 * * * *"
+
+logging:
+  level:
+    root: INFO
+    org.springframework.batch: INFO
