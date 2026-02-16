@@ -1,0 +1,583 @@
+openapi: 3.0.3
+info:
+  title: Backend Fullstack - Customers & Payment API
+  version: 1.1.0
+  description: >
+    Contrato OpenAPI **production-ready**. El contrato es la *fuente única de verdad*
+    entre cliente – backend – integraciones.
+
+servers:
+  - url: http://localhost:8080
+    description: Local
+
+tags:
+  - name: Customers
+    description: Operaciones CRUD para clientes
+  - name: Payment
+    description: Payments relacionadas a un customer
+
+paths:
+  /customers:
+    post:
+      tags: [Customers]
+      summary: Crear cliente
+      description: >
+        Crea un cliente. Soporta **idempotencia** vía header `Idempotency-Key`.
+        - **201**: creado (Location: `/customers/{id}`)
+        - **200**: replay idempotente (misma respuesta previa)
+        - **202**: request en progreso (PENDING)
+      operationId: createCustomer
+      security:
+        - oauth2: [customers:write]
+      parameters:
+        - $ref: "#/components/parameters/XCorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Authorization"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerRequest"
+            examples:
+              create:
+                summary: Crear cliente
+                value:
+                  name: "Ada Lovelace"
+                  email: "ada.lovelace@example.com"
+      responses:
+        "201":
+          description: Creado
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+            Location:
+              description: URI del nuevo recurso
+              schema:
+                type: string
+                example: "/customers/9f1f0b0f-6b87-4df8-9ed9-7b2e2d7d0a2c"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+        "200":
+          description: Replay idempotente (misma solicitud repetida)
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+        "202":
+          description: Solicitud aceptada y en progreso
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PendingResponse"
+              examples:
+                pending:
+                  value: { status: "PENDING" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+    get:
+      tags: [Customers]
+      summary: Listar clientes
+      operationId: listCustomers
+      security:
+        - oauth2: [customers:read]
+      parameters:
+        - $ref: "#/components/parameters/XCorrelationId"
+        - $ref: "#/components/parameters/Authorization"
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerResponse"
+        "401": { $ref: "#/components/responses/ErrorResponseAut" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Obtener cliente por id
+      operationId: getCustomer
+      security:
+        - oauth2: [customers:read]
+      parameters:
+        - $ref: "#/components/parameters/XCorrelationId"
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/Authorization"
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+        "401": { $ref: "#/components/responses/ErrorResponseAut" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+    put:
+      tags: [Customers]
+      summary: Actualizar cliente
+      operationId: updateCustomer
+      security:
+        - oauth2: [customers:write]
+      parameters:
+        - $ref: "#/components/parameters/XCorrelationId"
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/Authorization"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerRequest"
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/ErrorResponseAut" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+    delete:
+      tags: [Customers]
+      summary: Eliminar cliente
+      operationId: deleteCustomer
+      security:
+        - oauth2: [customers:write]
+      parameters:
+        - $ref: "#/components/parameters/XCorrelationId"
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "204":
+          description: No Content
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+        "401": { $ref: "#/components/responses/ErrorResponseAut" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /payments:
+    post:
+      tags: [Payment]
+      summary: Crear payment para un customer
+      description: >
+        Crea una payment relacionada al `customerId`.
+        **Por requerimiento, el backend siempre crea el payment con `status = 1`.**
+      operationId: createRecharge
+      security:
+        - oauth2: [customers:write]
+      parameters:
+        - $ref: "#/components/parameters/XCorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRechargeRequest"
+            examples:
+              create:
+                value:
+                  customerId: d4c885b9-abf6-4147-af2e-ee7865a409b6
+                  amount: "50.00"
+      responses:
+        "201":
+          description: Creado
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+            Location:
+              description: URI del nuevo recurso
+              schema:
+                type: string
+                example: "/customers/9f1f0b0f-6b87-4df8-9ed9-7b2e2d7d0a2c/recharges/2a6f5b32-10e1-4b44-9fa8-6fbf8d0d642a"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RechargeResponse"
+              examples:
+                created:
+                  value:
+                    id: "2a6f5b32-10e1-4b44-9fa8-6fbf8d0d642a"
+                    customerId: "9f1f0b0f-6b87-4df8-9ed9-7b2e2d7d0a2c"
+                    amount: "50.00"
+                    status: 1
+                    createdAt: "2026-01-13T21:05:00Z"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/ErrorResponseAut" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+    get:
+      tags: [Payment]
+      summary: Listar payment 
+      operationId: listRechargesByCustomer
+      security:
+        - oauth2: [customers:read]
+      parameters:
+        - $ref: "#/components/parameters/XCorrelationId"
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RechargeResponse"
+        "401": { $ref: "#/components/responses/ErrorResponseAut" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /payments/{paymentId}:
+    get:
+      tags: [Payment]
+      summary: Obtener payment por id (relacionada a customer)
+      operationId: getRecharge
+      security:
+        - oauth2: [customers:read]
+      parameters:
+        - $ref: "#/components/parameters/XCorrelationId"
+        - $ref: "#/components/parameters/PaymentId"
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RechargeResponse"
+        "401": { $ref: "#/components/responses/ErrorResponseAut" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      description: >
+        OAuth2 Bearer JWT. El backend valida JWT y requiere scopes:
+        - `customers:read` para operaciones GET bajo `/customers/**`
+        - `customers:write` para operaciones POST/PUT/DELETE bajo `/customers/**`
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.example.com/oauth2/token
+          scopes:
+            customers:read: Lectura (customers y recharges)
+            customers:write: Escritura (customers y recharges)
+
+  parameters:
+    Authorization:
+      name: Authorization
+      in: header
+      required: true
+      description: >
+        Token de autorización
+      schema:
+        type: string
+
+    XCorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: >
+        Correlation ID para trazabilidad. Si no se envía, el backend genera uno y lo devuelve.
+      schema:
+        type: string
+        format: uuid
+      example: "7f7e3b3f-7c4a-4e7d-8e47-66e88b5f1e9b"
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: >
+        Clave idempotente para evitar duplicados al reintentar `POST /customers`.
+        Si se reusa con un payload diferente, se responde **409 IDEMPOTENCY_CONFLICT**.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+      example: "a2b4c6d8e0f1a3b5"
+
+    CustomerId:
+      name: id
+      in: path
+      required: true
+      description: Identificador del customer (recurso /customers/{id})
+      schema:
+        type: string
+      example: "9f1f0b0f-6b87-4df8-9ed9-7b2e2d7d0a2c"
+
+    CustomerIdPath:
+      name: customerId
+      in: path
+      required: true
+      description: Identificador del customer (para rutas anidadas)
+      schema:
+        type: string
+      example: "9f1f0b0f-6b87-4df8-9ed9-7b2e2d7d0a2c"
+
+    PaymentId:
+      name: paymentId
+      in: path
+      required: true
+      description: Identificador de la recarga
+      schema:
+        type: string
+      example: "2a6f5b32-10e1-4b44-9fa8-6fbf8d0d642a"
+
+  headers:
+    XCorrelationId:
+      description: Correlation ID de la solicitud
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    CreateCustomerRequest:
+      type: object
+      required: [name, email]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        email:
+          type: string
+          format: email
+
+    UpdateCustomerRequest:
+      type: object
+      required: [name, email]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        email:
+          type: string
+          format: email
+
+    CustomerResponse:
+      type: object
+      required: [id, name, email, createdAt, updatedAt]
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CreateRechargeRequest:
+      type: object
+      required: [customerId, amount]
+      additionalProperties: false
+      properties:
+        CustomerId:
+          type: string
+          format: uuid
+        amount:
+          type: string
+          description: Monto del Payment
+          pattern: "^[0-9]+([0-9]{1,2})?$"
+          example: "50.00"
+        
+
+    RechargeResponse:
+      type: object
+      required: [id, customerId, amount, status, createdAt]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        customerId:
+          type: string
+        amount:
+          type: decimal
+          example: 50.00
+        status:
+          type: integer
+          description: Estado de la recarga (por requerimiento se crea en 1)
+          enum: [1]
+        createdAt:
+          type: string
+          format: date-time
+
+    PendingResponse:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: ["PENDING"]
+
+    ErrorResponseAut:
+      type: object
+      required: [errorCode, message, correlationId, details]
+      additionalProperties: false
+      properties:
+        errorCode:
+          type: string
+        message:
+          type: string
+        correlationId:
+          type: string
+          format: uuid
+        details:
+          type: object
+          
+
+    ErrorResponse:
+      type: object
+      required: [errorCode, message, correlationId, details]
+      additionalProperties: false
+      properties:
+        errorCode:
+          type: string
+        message:
+          type: string
+        correlationId:
+          type: string
+          format: uuid
+        details:
+          type: object
+          required: [key]
+          additionalProperties: false
+          properties:
+            key:
+              type: string
+              format: uuid
+          
+
+  responses:
+    BadRequest:
+      description: Error de validación / request inválido
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+    Unauthorized:
+      description: No autenticado (JWT ausente o inválido)
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponseAut" }
+
+    Forbidden:
+      description: Autenticado pero sin permisos (scope faltante)
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+    NotFound:
+      description: Recurso no encontrado
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+    Conflict:
+      description: Conflicto (duplicado / idempotencia / reglas)
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+    UnprocessableEntity:
+      description: Regla de negocio / request válido pero no procesable
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+    BadGateway:
+      description: Dependencia upstream falló
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+    ServiceUnavailable:
+      description: Servicio temporalmente no disponible
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+    InternalServerError:
+      description: Error inesperado
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
